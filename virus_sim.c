@@ -177,3 +177,42 @@ void render_grid(SDL_Renderer* renderer, TTF_Font* font) {
 
     SDL_RenderPresent(renderer);
 }
+
+void render_stats_window(SDL_Renderer* renderer, TTF_Font* font) {
+    int healthy, infected, dead;
+    count_stats(&healthy, &infected, &dead);
+
+    int total = healthy + infected + dead;
+    if (total == 0) return;
+
+    float healthy_percent = healthy / (float)total;
+    float infected_percent = infected / (float)total;
+    float dead_percent = dead / (float)total;
+
+    SDL_SetRenderDrawColor(renderer, 30, 30, 30, 255);
+    SDL_RenderClear(renderer);
+
+    int bar_width = 250;
+    int start_y = 50;
+
+    SDL_Rect bar = {25, start_y, bar_width * healthy_percent, 20};
+    SDL_SetRenderDrawColor(renderer, 0, 200, 0, 255); SDL_RenderFillRect(renderer, &bar);
+
+    bar.y += 30; bar.w = bar_width * infected_percent;
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); SDL_RenderFillRect(renderer, &bar);
+
+    bar.y += 30; bar.w = bar_width * dead_percent;
+    SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255); SDL_RenderFillRect(renderer, &bar);
+
+    char text[128];
+    SDL_Color white = {255, 255, 255, 255};
+
+    snprintf(text, sizeof(text), "Healthy: %d (%.1f%%)", healthy, healthy_percent * 100);
+    render_text(text, 25, 20, white, renderer, font);
+    snprintf(text, sizeof(text), "Infected: %d (%.1f%%)", infected, infected_percent * 100);
+    render_text(text, 25, 50 + 60, white, renderer, font);
+    snprintf(text, sizeof(text), "Dead: %d (%.1f%%)", dead, dead_percent * 100);
+    render_text(text, 25, 80 + 60, white, renderer, font);
+
+    SDL_RenderPresent(renderer);
+}

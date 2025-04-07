@@ -11,6 +11,9 @@ int main(int argc, char* argv[]) {
     SDL_Window* window = SDL_CreateWindow("ViruSim FX", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                           WINDOW_WIDTH, WINDOW_HEIGHT, 0);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    SDL_Window* stats_window = SDL_CreateWindow("Statistics", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                            300, 200, 0);
+    SDL_Renderer* stats_renderer = SDL_CreateRenderer(stats_window, -1, SDL_RENDERER_ACCELERATED);
     TTF_Font* font = TTF_OpenFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14);
     if (!font) return 1;
 
@@ -29,12 +32,15 @@ int main(int argc, char* argv[]) {
 
         update_grid();
         render_grid(renderer, font);
+        render_stats_window(stats_renderer, font);
 
         SDL_Delay(50);
     }
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
+    SDL_DestroyRenderer(stats_renderer);
+    SDL_DestroyWindow(stats_window);
     TTF_CloseFont(font);
     TTF_Quit();
     SDL_Quit();

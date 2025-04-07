@@ -46,6 +46,7 @@ void update_grid();
 void render_grid(SDL_Renderer* renderer, TTF_Font* font);
 void count_stats(int* healthy, int* infected, int* dead);
 void render_text(const char* text, int x, int y, SDL_Color color, SDL_Renderer* renderer, TTF_Font* font);
+void render_stats_window(SDL_Renderer* renderer, TTF_Font* font);
 Color random_color();
 
 #endif
