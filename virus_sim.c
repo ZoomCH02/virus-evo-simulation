@@ -1,0 +1,179 @@
+#include "virus_sim.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+int strain_count = 1;
+VirusStrain strains[MAX_STRAINS];
+Cell grid[GRID_HEIGHT][GRID_WIDTH];
+int ticks_since_last_mutation = 0;
+int mutation_timer = 500;
+int mutation_fx_counter = 0;
+
+Color make_color(float r, float g, float b) {
+    Color c = {r, g, b};
+    return c;
+}
+
+Color random_color() {
+    return make_color(rand() % 256, rand() % 256, rand() % 256);
+}
+
+void init_strain() {
+    strains[0] = (VirusStrain){
+        .name = "VRS-0",
+        .infection_rate = 0.35f,
+        .death_rate = 0.01f,
+        .recovery_time = 800,
+        .color = make_color(255, 0, 0)
+    };
+    strain_count = 1;
+}
+
+void mutate() {
+    if (strain_count >= MAX_STRAINS) return;
+
+    VirusStrain* prev = &strains[strain_count - 1];
+    VirusStrain* new_strain = &strains[strain_count++];
+
+    snprintf(new_strain->name, sizeof(new_strain->name), "VRS-%d", strain_count - 1);
+    new_strain->infection_rate = fminf(fmaxf(prev->infection_rate + ((rand() % 200 - 100) / 1000.0f), 0.01f), 0.9f);
+    new_strain->death_rate = fminf(fmaxf(prev->death_rate + ((rand() % 100 - 50) / 1000.0f), 0.01f), 0.5f);
+    new_strain->recovery_time = prev->recovery_time + (rand() % 41 - 20);
+    if (new_strain->recovery_time < 100) new_strain->recovery_time = 100;
+    new_strain->color = random_color();
+
+    mutation_fx_counter = 15;
+    printf("[MUTATION] New strain: %s | Infection: %.2f | Death: %.2f | Recovery: %d\n",
+           new_strain->name, new_strain->infection_rate, new_strain->death_rate, new_strain->recovery_time);
+}
+
+void init_grid() {
+    for (int y = 0; y < GRID_HEIGHT; y++)
+        for (int x = 0; x < GRID_WIDTH; x++)
+            grid[y][x] = (Cell){HEALTHY, 0, 0};
+
+    grid[GRID_HEIGHT / 2][GRID_WIDTH / 2] = (Cell){INFECTED, 0, 0};
+}
+
+void update_grid() {
+    Cell new_grid[GRID_HEIGHT][GRID_WIDTH];
+
+    for (int y = 0; y < GRID_HEIGHT; y++) {
+        for (int x = 0; x < GRID_WIDTH; x++) {
+            new_grid[y][x] = grid[y][x];
+            Cell cell = grid[y][x];
+
+            if (cell.state == INFECTED) {
+                VirusStrain strain = strains[cell.strain_id];
+                new_grid[y][x].infection_timer++;
+
+                if ((rand() / (float)RAND_MAX) < strain.death_rate) {
+                    new_grid[y][x].state = DEAD;
+                    continue;
+                }
+
+                if (new_grid[y][x].infection_timer > strain.recovery_time) {
+                    new_grid[y][x].state = HEALTHY;
+                    new_grid[y][x].infection_timer = 0;
+                    continue;
+                }
+
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dx = -1; dx <= 1; dx++) {
+                        int nx = x + dx, ny = y + dy;
+                        if (nx >= 0 && ny >= 0 && nx < GRID_WIDTH && ny < GRID_HEIGHT &&
+                            !(dx == 0 && dy == 0) &&
+                            grid[ny][nx].state == HEALTHY) {
+
+                            if ((rand() / (float)RAND_MAX) < strain.infection_rate) {
+                                new_grid[ny][nx].state = INFECTED;
+                                new_grid[ny][nx].strain_id = cell.strain_id;
+                                new_grid[ny][nx].infection_timer = 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for (int y = 0; y < GRID_HEIGHT; y++)
+        for (int x = 0; x < GRID_WIDTH; x++)
+            grid[y][x] = new_grid[y][x];
+
+    ticks_since_last_mutation++;
+    int infected = 0;
+    for (int y = 0; y < GRID_HEIGHT; y++) {
+        for (int x = 0; x < GRID_WIDTH; x++) {
+            if (grid[y][x].state == INFECTED) infected++;
+        }
+    }
+    if (infected >= 500 && strain_count < MAX_STRAINS) {
+        mutate();
+    }
+}
+
+void render_text(const char* text, int x, int y, SDL_Color color, SDL_Renderer* renderer, TTF_Font* font) {
+    SDL_Surface* surface = TTF_RenderText_Blended(font, text, color);
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_Rect dst = {x, y, surface->w, surface->h};
+    SDL_RenderCopy(renderer, texture, NULL, &dst);
+    SDL_FreeSurface(surface);
+    SDL_DestroyTexture(texture);
+}
+
+void count_stats(int* healthy, int* infected, int* dead) {
+    *healthy = *infected = *dead = 0;
+    for (int y = 0; y < GRID_HEIGHT; y++)
+        for (int x = 0; x < GRID_WIDTH; x++) {
+            switch (grid[y][x].state) {
+                case HEALTHY: (*healthy)++; break;
+                case INFECTED: (*infected)++; break;
+                case DEAD: (*dead)++; break;
+            }
+        }
+}
+
+void render_grid(SDL_Renderer* renderer, TTF_Font* font) {
+    if (mutation_fx_counter > 0) {
+        mutation_fx_counter--;
+        SDL_SetRenderDrawColor(renderer, 255, 255, 50, 255);
+        SDL_RenderClear(renderer);
+    } else {
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+    }
+
+    for (int y = 0; y < GRID_HEIGHT; y++) {
+        for (int x = 0; x < GRID_WIDTH; x++) {
+            Cell cell = grid[y][x];
+            if (cell.state == HEALTHY) {
+                SDL_SetRenderDrawColor(renderer, 0, 200, 0, 255);
+            } else if (cell.state == INFECTED) {
+                Color c = strains[cell.strain_id].color;
+                SDL_SetRenderDrawColor(renderer, (int)c.r, (int)c.g, (int)c.b, 255);
+            } else if (cell.state == DEAD) {
+                SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
+            }
+            SDL_Rect rect = {x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE};
+            SDL_RenderFillRect(renderer, &rect);
+        }
+    }
+
+    SDL_Color white = {255, 255, 255, 255};
+    char info[256];
+    snprintf(info, sizeof(info), "Strains: %d", strain_count);
+    render_text(info, 10, 10, white, renderer, font);
+
+    int line = 30;
+    for (int i = strain_count - 1; i >= 0 && i >= strain_count - 3; i--) {
+        VirusStrain* s = &strains[i];
+        snprintf(info, sizeof(info), "[%s] INF: %.2f | DEATH: %.2f | REC: %d",
+                 s->name, s->infection_rate, s->death_rate, s->recovery_time);
+        render_text(info, 10, line, white, renderer, font);
+        line += 20;
+    }
+
+    SDL_RenderPresent(renderer);
+}
