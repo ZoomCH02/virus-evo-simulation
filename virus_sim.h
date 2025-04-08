@@ -9,7 +9,7 @@
 #define CELL_SIZE 8
 #define WINDOW_WIDTH (GRID_WIDTH * CELL_SIZE)
 #define WINDOW_HEIGHT (GRID_HEIGHT * CELL_SIZE)
-#define MAX_STRAINS 64
+#define MAX_STRAINS 10
 
 typedef enum {
     HEALTHY,
@@ -27,6 +27,9 @@ typedef struct {
     float death_rate;
     int recovery_time;
     Color color;
+
+    int has_mutated;     // флаг: мутировал ли уже этот вирус
+    int infected_count;  // сколько заражённых у этого штамма
 } VirusStrain;
 
 typedef struct {
@@ -43,6 +46,7 @@ void init_strain();
 void init_grid();
 void mutate();
 void update_grid();
+void mutate_from_strain(int parent_id);
 void render_grid(SDL_Renderer* renderer, TTF_Font* font);
 void count_stats(int* healthy, int* infected, int* dead);
 void render_text(const char* text, int x, int y, SDL_Color color, SDL_Renderer* renderer, TTF_Font* font);

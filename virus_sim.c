@@ -59,12 +59,19 @@ void init_grid() {
 void update_grid() {
     Cell new_grid[GRID_HEIGHT][GRID_WIDTH];
 
+    // Сбросим статистику заражения по каждому штамму
+    for (int i = 0; i < strain_count; i++) {
+        strains[i].infected_count = 0;
+    }
+
     for (int y = 0; y < GRID_HEIGHT; y++) {
         for (int x = 0; x < GRID_WIDTH; x++) {
             new_grid[y][x] = grid[y][x];
             Cell cell = grid[y][x];
 
             if (cell.state == INFECTED) {
+                strains[cell.strain_id].infected_count++;
+
                 VirusStrain strain = strains[cell.strain_id];
                 new_grid[y][x].infection_timer++;
 
@@ -97,6 +104,13 @@ void update_grid() {
             }
         }
     }
+
+    for (int i = 0; i < strain_count; i++) {
+    if (!strains[i].has_mutated && strains[i].infected_count >= 500) {
+        mutate_from_strain(i);
+        strains[i].has_mutated = 1;
+    }
+}
 
     for (int y = 0; y < GRID_HEIGHT; y++)
         for (int x = 0; x < GRID_WIDTH; x++)
@@ -215,4 +229,26 @@ void render_stats_window(SDL_Renderer* renderer, TTF_Font* font) {
     render_text(text, 25, 80 + 60, white, renderer, font);
 
     SDL_RenderPresent(renderer);
+}
+
+void mutate_from_strain(int parent_id) {
+    if (strain_count >= MAX_STRAINS) return;
+
+    VirusStrain* prev = &strains[parent_id];
+    VirusStrain* new_strain = &strains[strain_count++];
+
+    snprintf(new_strain->name, sizeof(new_strain->name), "VRS-%d", strain_count - 1);
+    new_strain->infection_rate = fminf(fmaxf(prev->infection_rate + ((rand() % 200 - 100) / 1000.0f), 0.01f), 0.9f);
+    new_strain->death_rate = fminf(fmaxf(prev->death_rate + ((rand() % 100 - 50) / 1000.0f), 0.01f), 0.5f);
+    new_strain->recovery_time = prev->recovery_time + (rand() % 41 - 20);
+    if (new_strain->recovery_time < 100) new_strain->recovery_time = 100;
+    new_strain->color = random_color();
+
+    new_strain->has_mutated = 0;
+    new_strain->infected_count = 0;
+
+    mutation_fx_counter = 15;
+    printf("[MUTATION] %s → %s | INF: %.2f | DEATH: %.2f | REC: %d\n",
+           prev->name, new_strain->name, new_strain->infection_rate,
+           new_strain->death_rate, new_strain->recovery_time);
 }
