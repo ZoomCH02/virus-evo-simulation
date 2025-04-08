@@ -1,1 +1,0 @@
-gcc -o virusim virusim.c `sdl2-config --cflags --libs` -lSDL2_ttf -lm
