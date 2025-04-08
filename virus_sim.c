@@ -20,14 +20,19 @@ Color random_color() {
 }
 
 void init_strain() {
+    strain_count = 1;
+    for (int i = 0; i < MAX_STRAINS; i++) {
+        strains[i] = (VirusStrain){0};  // обнуляем структуру
+    }
     strains[0] = (VirusStrain){
         .name = "VRS-0",
         .infection_rate = 0.35f,
         .death_rate = 0.01f,
         .recovery_time = 800,
-        .color = make_color(255, 0, 0)
+        .color = make_color(255, 0, 0),
+        .has_mutated = 0,
+        .infected_count = 0
     };
-    strain_count = 1;
 }
 
 void mutate() {

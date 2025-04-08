@@ -26,7 +26,8 @@ int main(int argc, char* argv[]) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = 0;
             if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_r) {
-                init_grid();  // перезапуск симуляции
+                init_strain();  // <-- добавь это!
+                init_grid();
             }
         }
 
