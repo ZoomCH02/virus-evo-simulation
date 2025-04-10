@@ -40,9 +40,9 @@ void init_strain() {
     }
     strains[0] = (VirusStrain){
         .name = "VRS-0",
-        .infection_rate = 0.35f,
-        .death_rate = 0.01f,
-        .recovery_time = 800,
+        .infection_rate = 0.05f,
+        .death_rate = 0.005f,
+        .recovery_time = 400,
         .color = make_color(255, 0, 0),
         .has_mutated = 0,
         .infected_count = 0
@@ -78,49 +78,47 @@ void init_grid() {
 }
 
 void update_grid() {
-    Cell new_grid[GRID_HEIGHT][GRID_WIDTH];
-
-    if (mutation_cooldown > 0) {
-        mutation_cooldown--;
-    }
-
-    for (int i = 0; i < strain_count; i++) {
-        strains[i].infected_count = 0;
-    }
-
+    // Сначала обновляем все состояния в ОДИН проход
     for (int y = 0; y < GRID_HEIGHT; y++) {
         for (int x = 0; x < GRID_WIDTH; x++) {
-            new_grid[y][x] = grid[y][x];
             Cell cell = grid[y][x];
 
             if (cell.state == INFECTED) {
                 strains[cell.strain_id].infected_count++;
 
                 VirusStrain strain = strains[cell.strain_id];
-                new_grid[y][x].infection_timer++;
+                grid[y][x].infection_timer++;
 
+                // Проверка на смерть
                 if ((rand() / (float)RAND_MAX) < strain.death_rate) {
-                    new_grid[y][x].state = DEAD;
+                    grid[y][x].state = DEAD;
                     continue;
                 }
 
-                if (new_grid[y][x].infection_timer > strain.recovery_time) {
-                    new_grid[y][x].state = HEALTHY;
-                    new_grid[y][x].infection_timer = 0;
+                // Проверка на выздоровление
+                if (grid[y][x].infection_timer > strain.recovery_time) {
+                    grid[y][x].state = HEALTHY;
+                    grid[y][x].infection_timer = 0;
                     continue;
                 }
 
+                // Заражаем соседей (но не применяем сразу)
                 for (int dy = -1; dy <= 1; dy++) {
                     for (int dx = -1; dx <= 1; dx++) {
-                        int nx = x + dx, ny = y + dy;
-                        if (nx >= 0 && ny >= 0 && nx < GRID_WIDTH && ny < GRID_HEIGHT &&
-                            !(dx == 0 && dy == 0) &&
-                            grid[ny][nx].state == HEALTHY) {
+                        if (dx == 0 && dy == 0) continue; // Пропускаем себя
 
+                        int nx = x + dx;
+                        int ny = y + dy;
+
+                        // Проверяем границы и здоровье клетки
+                        if (nx >= 0 && ny >= 0 && nx < GRID_WIDTH && ny < GRID_HEIGHT &&
+                            grid[ny][nx].state == HEALTHY) {
+                            
+                            // Заражаем с вероятностью infection_rate
                             if ((rand() / (float)RAND_MAX) < strain.infection_rate) {
-                                new_grid[ny][nx].state = INFECTED;
-                                new_grid[ny][nx].strain_id = cell.strain_id;
-                                new_grid[ny][nx].infection_timer = 0;
+                                grid[ny][nx].state = INFECTED;
+                                grid[ny][nx].strain_id = cell.strain_id;
+                                grid[ny][nx].infection_timer = 0;
                             }
                         }
                     }
@@ -129,8 +127,8 @@ void update_grid() {
         }
     }
 
+    // Проверка на мутации (оставляем как было)
     int mutated_this_tick = 0;
-
     for (int i = 0; i < strain_count; i++) {
         if (!strains[i].has_mutated && strains[i].infected_count >= 500) {
             mutate_from_strain(i);
@@ -140,14 +138,7 @@ void update_grid() {
         }
     }
 
-    for (int y = 0; y < GRID_HEIGHT; y++) {
-        for (int x = 0; x < GRID_WIDTH; x++) {
-            grid[y][x] = new_grid[y][x];
-        }
-    }
-
-    ticks_since_last_mutation++;
-
+    // Глобальная мутация (если нужно)
     int infected = 0;
     for (int y = 0; y < GRID_HEIGHT; y++) {
         for (int x = 0; x < GRID_WIDTH; x++) {
