@@ -16,8 +16,21 @@ Color make_color(float r, float g, float b) {
     return c;
 }
 
-Color random_color() {
-    return make_color(rand() % 256, rand() % 256, rand() % 256);
+Color get_distinct_color(int index) {
+    Color palette[] = {
+        {1.0f, 0.0f, 0.0f}, // Красный
+        {0.0f, 1.0f, 0.0f}, // Зелёный
+        {0.0f, 0.0f, 1.0f}, // Синий
+        {1.0f, 1.0f, 0.0f}, // Жёлтый
+        {1.0f, 0.0f, 1.0f}, // Пурпурный
+        {0.0f, 1.0f, 1.0f}, // Голубой
+        {1.0f, 0.5f, 0.0f}, // Оранжевый
+        {0.6f, 0.0f, 1.0f}, // Фиолетовый
+        {0.3f, 1.0f, 0.2f}, // Лайм
+        {0.9f, 0.2f, 0.4f}  // Малиновый
+    };
+    int size = sizeof(palette) / sizeof(palette[0]);
+    return palette[index % size];
 }
 
 void init_strain() {
@@ -49,7 +62,7 @@ void mutate() {
     new_strain->death_rate = fminf(fmaxf(prev->death_rate + ((rand() % 100 - 50) / 1000.0f), 0.01f), 0.5f);
     new_strain->recovery_time = prev->recovery_time + (rand() % 41 - 20);
     if (new_strain->recovery_time < 100) new_strain->recovery_time = 100;
-    new_strain->color = random_color();
+    new_strain->color = get_distinct_color(strain_count - 1);
 
     mutation_fx_counter = 15;
     printf("[MUTATION] New strain: %s | Infection: %.2f | Death: %.2f | Recovery: %d\n",
@@ -264,7 +277,7 @@ void mutate_from_strain(int parent_id) {
     new_strain->death_rate = fminf(fmaxf(prev->death_rate + ((rand() % 100 - 50) / 1000.0f), 0.01f), 0.5f);
     new_strain->recovery_time = prev->recovery_time + (rand() % 41 - 20);
     if (new_strain->recovery_time < 100) new_strain->recovery_time = 100;
-    new_strain->color = random_color();
+    new_strain->color = get_distinct_color(strain_count - 1);
 
     new_strain->has_mutated = 0;
     new_strain->infected_count = 0;
@@ -273,4 +286,11 @@ void mutate_from_strain(int parent_id) {
     printf("[MUTATION] %s → %s | INF: %.2f | DEATH: %.2f | REC: %d\n",
            prev->name, new_strain->name, new_strain->infection_rate,
            new_strain->death_rate, new_strain->recovery_time);
+
+    // Засеваем одну случайную клетку новым штаммом
+    int x = rand() % GRID_WIDTH;
+    int y = rand() % GRID_HEIGHT;
+    grid[y][x].state = INFECTED;
+    grid[y][x].strain_id = strain_count - 1;
+    grid[y][x].infection_timer = 0;
 }
