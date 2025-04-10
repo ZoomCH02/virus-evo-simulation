@@ -13,11 +13,6 @@ int mutation_cooldown = 0;
 MutationRecord mutation_history[MAX_MUTATION_HISTORY] = {0};
 int mutation_history_count = 0;
 
-Color make_color(float r, float g, float b) {
-    Color c = {r, g, b};
-    return c;
-}
-
 Color get_distinct_color(int index) {
     Color palette[] = {
         {1.0f, 0.0f, 0.0f}, // Красный
@@ -45,8 +40,8 @@ void init_strain() {
         .name = "VRS-0",
         .infection_rate = 0.05f,
         .death_rate = 0.005f,
-        .recovery_time = 400,
-        .color = make_color(255, 0, 0),
+        .recovery_time = 200,
+        .color = {1.0f, 0.0f, 0.0f},
         .has_mutated = 0,
         .infected_count = 0
     };
@@ -192,7 +187,12 @@ void render_grid(SDL_Renderer* renderer, TTF_Font* font) {
                 SDL_SetRenderDrawColor(renderer, 0, 200, 0, 255);
             } else if (cell.state == INFECTED) {
                 Color c = strains[cell.strain_id].color;
-                SDL_SetRenderDrawColor(renderer, (int)c.r, (int)c.g, (int)c.b, 255);
+                // Изменяем здесь - используем те же значения, что и в статистике
+                SDL_SetRenderDrawColor(renderer, 
+                                      (int)(c.r * 255), 
+                                      (int)(c.g * 255), 
+                                      (int)(c.b * 255), 
+                                      255);
             } else if (cell.state == DEAD) {
                 SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
             }
