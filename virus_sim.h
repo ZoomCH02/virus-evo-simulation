@@ -10,6 +10,7 @@
 #define WINDOW_WIDTH (GRID_WIDTH * CELL_SIZE)
 #define WINDOW_HEIGHT (GRID_HEIGHT * CELL_SIZE)
 #define MAX_STRAINS 10
+#define MAX_MUTATION_HISTORY 10
 
 typedef enum {
     HEALTHY,
@@ -38,9 +39,16 @@ typedef struct {
     int strain_id;
 } Cell;
 
+typedef struct {
+    char message[256];
+    int strain_id;
+} MutationRecord;
+
 extern VirusStrain strains[MAX_STRAINS];
 extern int strain_count;
 extern Cell grid[GRID_HEIGHT][GRID_WIDTH];
+extern MutationRecord mutation_history[MAX_MUTATION_HISTORY];
+extern int mutation_history_count;
 
 void init_strain();
 void init_grid();

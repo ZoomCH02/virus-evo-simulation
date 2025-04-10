@@ -10,6 +10,8 @@ int ticks_since_last_mutation = 0;
 int mutation_timer = 500;
 int mutation_fx_counter = 0;
 int mutation_cooldown = 0;
+MutationRecord mutation_history[MAX_MUTATION_HISTORY] = {0};
+int mutation_history_count = 0;
 
 Color make_color(float r, float g, float b) {
     Color c = {r, g, b};
@@ -35,8 +37,9 @@ Color get_distinct_color(int index) {
 
 void init_strain() {
     strain_count = 1;
+    mutation_history_count = 0;  // Очищаем историю мутаций
     for (int i = 0; i < MAX_STRAINS; i++) {
-        strains[i] = (VirusStrain){0};  // обнуляем структуру
+        strains[i] = (VirusStrain){0};
     }
     strains[0] = (VirusStrain){
         .name = "VRS-0",
@@ -229,27 +232,76 @@ void render_stats_window(SDL_Renderer* renderer, TTF_Font* font) {
     SDL_SetRenderDrawColor(renderer, 30, 30, 30, 255);
     SDL_RenderClear(renderer);
 
+    // Основная статистика (верхняя часть окна)
     int bar_width = 250;
-    int start_y = 50;
-
-    SDL_Rect bar = {25, start_y, bar_width * healthy_percent, 20};
+    SDL_Rect bar = {25, 20, bar_width * healthy_percent, 20};
     SDL_SetRenderDrawColor(renderer, 0, 200, 0, 255); SDL_RenderFillRect(renderer, &bar);
 
-    bar.y += 30; bar.w = bar_width * infected_percent;
+    bar.y = 50; bar.w = bar_width * infected_percent;
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); SDL_RenderFillRect(renderer, &bar);
 
-    bar.y += 30; bar.w = bar_width * dead_percent;
+    bar.y = 80; bar.w = bar_width * dead_percent;
     SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255); SDL_RenderFillRect(renderer, &bar);
 
     char text[128];
     SDL_Color white = {255, 255, 255, 255};
+    SDL_Color yellow = {255, 255, 0, 255};
+    SDL_Color strain_colors[MAX_STRAINS];
 
+    // Заполняем цвета штаммов для отображения
+    for (int i = 0; i < strain_count; i++) {
+        strain_colors[i] = (SDL_Color){
+            (Uint8)(strains[i].color.r * 255),
+            (Uint8)(strains[i].color.g * 255),
+            (Uint8)(strains[i].color.b * 255),
+            255
+        };
+    }
+
+    // Основная статистика текстом
+    render_text("Population Status:", 25, 0, yellow, renderer, font);
     snprintf(text, sizeof(text), "Healthy: %d (%.1f%%)", healthy, healthy_percent * 100);
     render_text(text, 25, 20, white, renderer, font);
     snprintf(text, sizeof(text), "Infected: %d (%.1f%%)", infected, infected_percent * 100);
-    render_text(text, 25, 50 + 60, white, renderer, font);
+    render_text(text, 25, 50, white, renderer, font);
     snprintf(text, sizeof(text), "Dead: %d (%.1f%%)", dead, dead_percent * 100);
-    render_text(text, 25, 80 + 60, white, renderer, font);
+    render_text(text, 25, 80, white, renderer, font);
+
+    // История мутаций (нижняя часть окна)
+    int mutation_start_y = 110;
+    render_text("Mutation History:", 25, mutation_start_y, yellow, renderer, font);
+    
+    int y_pos = mutation_start_y + 20;
+    int max_mutations_to_show = 5; // Сколько последних мутаций показывать
+    
+    for (int i = mutation_history_count - 1; 
+         i >= 0 && i >= mutation_history_count - max_mutations_to_show; 
+         i--) {
+        
+        // Цвет штамма для иконки
+        SDL_SetRenderDrawColor(renderer, 
+                              strain_colors[mutation_history[i].strain_id].r,
+                              strain_colors[mutation_history[i].strain_id].g,
+                              strain_colors[mutation_history[i].strain_id].b,
+                              255);
+        SDL_Rect strain_icon = {25, y_pos + 5, 10, 10};
+        SDL_RenderFillRect(renderer, &strain_icon);
+        
+        // Первая строка - номер мутации
+        snprintf(text, sizeof(text), "Mutation #%d:", i+1);
+        render_text(text, 40, y_pos, white, renderer, font);
+        y_pos += 20;
+        
+        // Разбиваем сообщение на строки
+        char* line = strtok(mutation_history[i].message, "\n");
+        while (line != NULL && y_pos < 300) {
+            render_text(line, 40, y_pos, white, renderer, font);
+            y_pos += 20;
+            line = strtok(NULL, "\n");
+        }
+        
+        y_pos += 10; // Отступ между мутациями
+    }
 
     SDL_RenderPresent(renderer);
 }
@@ -273,9 +325,25 @@ void mutate_from_strain(int parent_id) {
     new_strain->infected_count = 0;
 
     mutation_fx_counter = 15;
-    printf("[MUTATION] %s → %s | INF: %.2f | DEATH: %.2f | REC: %d\n",
-           prev->name, new_strain->name, new_strain->infection_rate,
-           new_strain->death_rate, new_strain->recovery_time);
+    
+    // Добавляем запись в историю мутаций
+    if (mutation_history_count >= MAX_MUTATION_HISTORY) {
+        // Сдвигаем историю, если достигли максимума
+        for (int i = 0; i < MAX_MUTATION_HISTORY-1; i++) {
+            mutation_history[i] = mutation_history[i+1];
+        }
+        mutation_history_count = MAX_MUTATION_HISTORY-1;
+    }
+    
+    snprintf(mutation_history[mutation_history_count].message, sizeof(mutation_history[0].message), 
+             "%s -> %s\nINF: %.2f -> %.2f\nDEATH: %.2f -> %.2f\nREC: %d -> %d",
+             prev->name, new_strain->name, 
+             prev->infection_rate, new_strain->infection_rate,
+             prev->death_rate, new_strain->death_rate,
+             prev->recovery_time, new_strain->recovery_time);
+             
+    mutation_history[mutation_history_count].strain_id = strain_count - 1;
+    mutation_history_count++;
 
     // Засеваем одну случайную клетку новым штаммом
     int x = rand() % GRID_WIDTH;
