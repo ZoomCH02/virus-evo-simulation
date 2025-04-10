@@ -74,7 +74,7 @@ void init_grid() {
         for (int x = 0; x < GRID_WIDTH; x++)
             grid[y][x] = (Cell){HEALTHY, 0, 0};
 
-    grid[GRID_HEIGHT / 2][GRID_WIDTH / 2] = (Cell){INFECTED, 0, 0};
+    grid[rand() % GRID_HEIGHT][rand() % GRID_WIDTH / 2] = (Cell){INFECTED, 0, 0};
 }
 
 void update_grid() {
@@ -140,7 +140,6 @@ void update_grid() {
         }
     }
 
-    // ← ПЕРЕМЕЩЕНО СЮДА
     for (int y = 0; y < GRID_HEIGHT; y++) {
         for (int x = 0; x < GRID_WIDTH; x++) {
             grid[y][x] = new_grid[y][x];

@@ -4,8 +4,8 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
-#define GRID_WIDTH 100
-#define GRID_HEIGHT 150
+#define GRID_WIDTH 150
+#define GRID_HEIGHT 100
 #define CELL_SIZE 8
 #define WINDOW_WIDTH (GRID_WIDTH * CELL_SIZE)
 #define WINDOW_HEIGHT (GRID_HEIGHT * CELL_SIZE)
