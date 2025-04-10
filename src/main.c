@@ -4,15 +4,16 @@
 #include <string.h>
 #include <pthread.h>
 #include "virus_sim.h"
+#include "simulation/core.h"
+#include "rendering/render.h"
 
 int main(int argc, char* argv[]) {
-    (void)argc; // Явное указание, что параметры не используются
-    (void)argv;
-    
+    (void)argc; (void)argv;
     srand(time(NULL));
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0 || TTF_Init() < 0) return 1;
 
+    // Инициализация окон и рендереров
     SDL_Window* window = SDL_CreateWindow("ViruSim FX", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                       WINDOW_WIDTH, WINDOW_HEIGHT, 0);
     if (!window) return 1;
@@ -30,41 +31,26 @@ int main(int argc, char* argv[]) {
     TTF_Font* font = TTF_OpenFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14);
     if (!font) return 1;
 
-    init_strain();
-    init_grid();
+    init_simulation();
 
-    pthread_t sim_thread;
-    if (pthread_create(&sim_thread, NULL, simulation_thread, NULL) != 0) {
-        return 1;
-    }
-
+    // Основной цикл
     int running = 1;
     SDL_Event event;
     while (running) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = 0;
             if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_r) {
-                pthread_mutex_lock(&grid_mutex);
-                pthread_mutex_lock(&strains_mutex);
-                init_strain();
-                init_grid();
-                pthread_mutex_unlock(&strains_mutex);
-                pthread_mutex_unlock(&grid_mutex);
+                reset_simulation();
             }
         }
 
-        render_grid(renderer, font);
-        render_stats_window(stats_renderer, font);
-
+        render_simulation(renderer, stats_renderer, font);
         SDL_Delay(16);
     }
 
-    simulation_running = 0;
-    pthread_join(sim_thread, NULL);
-
-    pthread_mutex_destroy(&grid_mutex);
-    pthread_mutex_destroy(&strains_mutex);
-
+    cleanup_simulation();
+    
+    // Очистка SDL
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_DestroyRenderer(stats_renderer);

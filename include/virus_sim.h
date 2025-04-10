@@ -5,6 +5,7 @@
 #include <SDL2/SDL_ttf.h>
 #include <pthread.h>
 
+// Общие константы
 #define GRID_WIDTH 150
 #define GRID_HEIGHT 100
 #define CELL_SIZE 8
@@ -13,6 +14,7 @@
 #define MAX_STRAINS 10
 #define MAX_MUTATION_HISTORY 10
 
+// Общие структуры данных
 typedef enum {
     HEALTHY,
     INFECTED,
@@ -49,23 +51,14 @@ extern pthread_mutex_t grid_mutex;
 extern pthread_mutex_t strains_mutex;
 extern int simulation_running;
 extern int rendering_complete;
+extern int mutation_fx_counter;
+extern int mutation_cooldown;
+
 
 extern VirusStrain strains[MAX_STRAINS];
 extern int strain_count;
 extern Cell grid[GRID_HEIGHT][GRID_WIDTH];
 extern MutationRecord mutation_history[MAX_MUTATION_HISTORY];
 extern int mutation_history_count;
-
-void init_strain();
-void init_grid();
-void mutate();
-void update_grid();
-void mutate_from_strain(int parent_id);
-void render_grid(SDL_Renderer* renderer, TTF_Font* font);
-void count_stats(int* healthy, int* infected, int* dead);
-void render_text(const char* text, int x, int y, SDL_Color color, SDL_Renderer* renderer, TTF_Font* font);
-void render_stats_window(SDL_Renderer* renderer, TTF_Font* font);
-Color get_distinct_color(int index);
-void* simulation_thread(void* arg);
 
 #endif

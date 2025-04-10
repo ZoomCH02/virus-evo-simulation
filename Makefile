@@ -1,8 +1,13 @@
 CC = gcc
-CFLAGS = $(shell sdl2-config --cflags) -Wall -Wextra -O2
+CFLAGS = $(shell sdl2-config --cflags) -Wall -Wextra -O2 -Iinclude
 LDFLAGS = $(shell sdl2-config --libs) -lSDL2_ttf -lpthread -lm
 
-SRC = main.c virus_sim.c
+SRC = src/main.c \
+      src/simulation/core.c \
+      src/simulation/grid.c \
+      src/simulation/mutation.c \
+      src/rendering/render.c
+
 OBJ = $(SRC:.c=.o)
 EXEC = virus_sim
 
