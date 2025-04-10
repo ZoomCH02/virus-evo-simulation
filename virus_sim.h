@@ -3,6 +3,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+#include <pthread.h>
 
 #define GRID_WIDTH 150
 #define GRID_HEIGHT 100
@@ -28,9 +29,8 @@ typedef struct {
     float death_rate;
     int recovery_time;
     Color color;
-
-    int has_mutated;     // флаг: мутировал ли уже этот вирус
-    int infected_count;  // сколько заражённых у этого штамма
+    int has_mutated;
+    int infected_count;
 } VirusStrain;
 
 typedef struct {
@@ -43,6 +43,11 @@ typedef struct {
     char message[256];
     int strain_id;
 } MutationRecord;
+
+extern pthread_mutex_t grid_mutex;
+extern pthread_mutex_t strains_mutex;
+extern int simulation_running;
+extern int rendering_complete;
 
 extern VirusStrain strains[MAX_STRAINS];
 extern int strain_count;
@@ -60,5 +65,6 @@ void count_stats(int* healthy, int* infected, int* dead);
 void render_text(const char* text, int x, int y, SDL_Color color, SDL_Renderer* renderer, TTF_Font* font);
 void render_stats_window(SDL_Renderer* renderer, TTF_Font* font);
 Color get_distinct_color(int index);
+void* simulation_thread(void* arg);
 
 #endif

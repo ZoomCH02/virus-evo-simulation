@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h> // Для usleep
 
 int strain_count = 1;
 VirusStrain strains[MAX_STRAINS];
@@ -12,6 +13,11 @@ int mutation_fx_counter = 0;
 int mutation_cooldown = 0;
 MutationRecord mutation_history[MAX_MUTATION_HISTORY] = {0};
 int mutation_history_count = 0;
+
+pthread_mutex_t grid_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t strains_mutex = PTHREAD_MUTEX_INITIALIZER;
+int simulation_running = 1;
+int rendering_complete = 1;
 
 Color get_distinct_color(int index) {
     Color palette[] = {
@@ -45,6 +51,31 @@ void init_strain() {
         .has_mutated = 0,
         .infected_count = 0
     };
+}
+
+void* simulation_thread(void* arg) {
+    while (simulation_running) {
+        // Ждем завершения отрисовки
+        while (!rendering_complete && simulation_running) {
+            usleep(1000);
+        }
+        
+        if (!simulation_running) break;
+        
+        // Блокируем мьютексы перед изменением данных
+        pthread_mutex_lock(&grid_mutex);
+        pthread_mutex_lock(&strains_mutex);
+        
+        update_grid();
+        
+        // Разблокируем мьютексы
+        pthread_mutex_unlock(&strains_mutex);
+        pthread_mutex_unlock(&grid_mutex);
+        
+        rendering_complete = 0;
+        usleep(10000); // Небольшая пауза между итерациями
+    }
+    return NULL;
 }
 
 void mutate() {
@@ -180,14 +211,18 @@ void render_grid(SDL_Renderer* renderer, TTF_Font* font) {
         SDL_RenderClear(renderer);
     }
 
+    // Блокируем мьютекс перед чтением данных
+    pthread_mutex_lock(&grid_mutex);
+    
     for (int y = 0; y < GRID_HEIGHT; y++) {
         for (int x = 0; x < GRID_WIDTH; x++) {
             Cell cell = grid[y][x];
             if (cell.state == HEALTHY) {
                 SDL_SetRenderDrawColor(renderer, 0, 200, 0, 255);
             } else if (cell.state == INFECTED) {
+                pthread_mutex_lock(&strains_mutex);
                 Color c = strains[cell.strain_id].color;
-                // Изменяем здесь - используем те же значения, что и в статистике
+                pthread_mutex_unlock(&strains_mutex);
                 SDL_SetRenderDrawColor(renderer, 
                                       (int)(c.r * 255), 
                                       (int)(c.g * 255), 
@@ -207,6 +242,7 @@ void render_grid(SDL_Renderer* renderer, TTF_Font* font) {
     render_text(info, 10, 10, white, renderer, font);
 
     int line = 30;
+    pthread_mutex_lock(&strains_mutex);
     for (int i = strain_count - 1; i >= 0 && i >= strain_count - 3; i--) {
         VirusStrain* s = &strains[i];
         snprintf(info, sizeof(info), "[%s] INF: %.2f | DEATH: %.2f | REC: %d",
@@ -214,12 +250,21 @@ void render_grid(SDL_Renderer* renderer, TTF_Font* font) {
         render_text(info, 10, line, white, renderer, font);
         line += 20;
     }
-
+    pthread_mutex_unlock(&strains_mutex);
+    
+    pthread_mutex_unlock(&grid_mutex);
+    
     SDL_RenderPresent(renderer);
+    rendering_complete = 1;
 }
 
 void render_stats_window(SDL_Renderer* renderer, TTF_Font* font) {
     int healthy, infected, dead;
+
+    pthread_mutex_lock(&grid_mutex);
+    count_stats(&healthy, &infected, &dead);
+    pthread_mutex_unlock(&grid_mutex);
+
     count_stats(&healthy, &infected, &dead);
 
     int total = healthy + infected + dead;
