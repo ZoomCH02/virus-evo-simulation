@@ -29,7 +29,7 @@ Color get_distinct_color(int index) {
         {0.0f, 1.0f, 1.0f}, // Голубой
         {1.0f, 0.5f, 0.0f}, // Оранжевый
         {0.6f, 0.0f, 1.0f}, // Фиолетовый
-        {0.3f, 1.0f, 0.2f}, // Лайм
+        {0.5f, 1.0f, 0.8f}, // Аквамариновый
         {0.9f, 0.2f, 0.4f}  // Малиновый
     };
     int size = sizeof(palette) / sizeof(palette[0]);
@@ -47,6 +47,7 @@ void init_strain() {
         .infection_rate = 0.05f,
         .death_rate = 0.005f,
         .recovery_time = 200,
+        .revival_rate = 0.001f,
         .color = {1.0f, 0.0f, 0.0f},
         .has_mutated = 0,
         .infected_count = 0
@@ -112,7 +113,26 @@ void update_grid() {
         for (int x = 0; x < GRID_WIDTH; x++) {
             Cell cell = grid[y][x];
 
-            if (cell.state == INFECTED) {
+            if (cell.state == HEALTHY) {
+                // Здоровые клетки могут оживлять мертвых соседей
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dx = -1; dx <= 1; dx++) {
+                        if (dx == 0 && dy == 0) continue;
+
+                        int nx = x + dx, ny = y + dy;
+                        if (nx >= 0 && ny >= 0 && nx < GRID_WIDTH && ny < GRID_HEIGHT &&
+                            grid[ny][nx].state == DEAD) {
+                            
+                            if ((rand() / (float)RAND_MAX) < strains[cell.strain_id].revival_rate) {
+                                grid[ny][nx].state = HEALTHY;
+                                grid[ny][nx].infection_timer = 0;
+                            }
+                        }
+                    }
+                }
+            }
+
+            else if (cell.state == INFECTED) {
                 strains[cell.strain_id].infected_count++;
 
                 VirusStrain strain = strains[cell.strain_id];
@@ -211,7 +231,6 @@ void render_grid(SDL_Renderer* renderer, TTF_Font* font) {
         SDL_RenderClear(renderer);
     }
 
-    // Блокируем мьютекс перед чтением данных
     pthread_mutex_lock(&grid_mutex);
     
     for (int y = 0; y < GRID_HEIGHT; y++) {
@@ -244,9 +263,9 @@ void render_grid(SDL_Renderer* renderer, TTF_Font* font) {
     int line = 30;
     pthread_mutex_lock(&strains_mutex);
     for (int i = strain_count - 1; i >= 0 && i >= strain_count - 3; i--) {
-        VirusStrain* s = &strains[i];
-        snprintf(info, sizeof(info), "[%s] INF: %.2f | DEATH: %.2f | REC: %d",
-                 s->name, s->infection_rate, s->death_rate, s->recovery_time);
+        VirusStrain* s = &strains[i]; // Объявляем переменную s здесь
+        snprintf(info, sizeof(info), "[%s] INF: %.2f | DEATH: %.2f | REV: %.3f | REC: %d",
+                 s->name, s->infection_rate, s->death_rate, s->revival_rate, s->recovery_time);
         render_text(info, 10, line, white, renderer, font);
         line += 20;
     }
@@ -362,6 +381,7 @@ void mutate_from_strain(int parent_id) {
     snprintf(new_strain->name, sizeof(new_strain->name), "VRS-%d", strain_count - 1);
     new_strain->infection_rate = fminf(fmaxf(prev->infection_rate + ((rand() % 200 - 100) / 1000.0f), 0.01f), 0.9f);
     new_strain->death_rate = fminf(fmaxf(prev->death_rate + ((rand() % 100 - 50) / 1000.0f), 0.01f), 0.5f);
+    new_strain->revival_rate = fminf(fmaxf(prev->revival_rate + ((rand() % 50 - 25) / 1000.0f), 0.0f), 0.1f);
     new_strain->recovery_time = prev->recovery_time + (rand() % 41 - 20);
     if (new_strain->recovery_time < 100) new_strain->recovery_time = 100;
     new_strain->color = get_distinct_color(strain_count - 1);

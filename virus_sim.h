@@ -27,6 +27,7 @@ typedef struct {
     char name[64];
     float infection_rate;
     float death_rate;
+    float revival_rate;
     int recovery_time;
     Color color;
     int has_mutated;
