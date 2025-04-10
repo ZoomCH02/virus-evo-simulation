@@ -9,6 +9,7 @@ Cell grid[GRID_HEIGHT][GRID_WIDTH];
 int ticks_since_last_mutation = 0;
 int mutation_timer = 500;
 int mutation_fx_counter = 0;
+int mutation_cooldown = 0;
 
 Color make_color(float r, float g, float b) {
     Color c = {r, g, b};
@@ -38,6 +39,8 @@ void init_strain() {
 void mutate() {
     if (strain_count >= MAX_STRAINS) return;
 
+    mutation_cooldown = 100;
+
     VirusStrain* prev = &strains[strain_count - 1];
     VirusStrain* new_strain = &strains[strain_count++];
 
@@ -64,7 +67,10 @@ void init_grid() {
 void update_grid() {
     Cell new_grid[GRID_HEIGHT][GRID_WIDTH];
 
-    // Сбросим статистику заражения по каждому штамму
+    if (mutation_cooldown > 0) {
+        mutation_cooldown--;
+    }
+
     for (int i = 0; i < strain_count; i++) {
         strains[i].infected_count = 0;
     }
@@ -110,25 +116,34 @@ void update_grid() {
         }
     }
 
-    for (int i = 0; i < strain_count; i++) {
-    if (!strains[i].has_mutated && strains[i].infected_count >= 500) {
-        mutate_from_strain(i);
-        strains[i].has_mutated = 1;
-    }
-}
+    int mutated_this_tick = 0;
 
-    for (int y = 0; y < GRID_HEIGHT; y++)
-        for (int x = 0; x < GRID_WIDTH; x++)
+    for (int i = 0; i < strain_count; i++) {
+        if (!strains[i].has_mutated && strains[i].infected_count >= 500) {
+            mutate_from_strain(i);
+            strains[i].has_mutated = 1;
+            mutated_this_tick = 1;
+            break;
+        }
+    }
+
+    // ← ПЕРЕМЕЩЕНО СЮДА
+    for (int y = 0; y < GRID_HEIGHT; y++) {
+        for (int x = 0; x < GRID_WIDTH; x++) {
             grid[y][x] = new_grid[y][x];
+        }
+    }
 
     ticks_since_last_mutation++;
+
     int infected = 0;
     for (int y = 0; y < GRID_HEIGHT; y++) {
         for (int x = 0; x < GRID_WIDTH; x++) {
             if (grid[y][x].state == INFECTED) infected++;
         }
     }
-    if (infected >= 500 && strain_count < MAX_STRAINS) {
+
+    if (!mutated_this_tick && mutation_cooldown == 0 && infected >= 500 && strain_count < MAX_STRAINS) {
         mutate();
     }
 }
@@ -238,6 +253,8 @@ void render_stats_window(SDL_Renderer* renderer, TTF_Font* font) {
 
 void mutate_from_strain(int parent_id) {
     if (strain_count >= MAX_STRAINS) return;
+
+    mutation_cooldown = 100;
 
     VirusStrain* prev = &strains[parent_id];
     VirusStrain* new_strain = &strains[strain_count++];
