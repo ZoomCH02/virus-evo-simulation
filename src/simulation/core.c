@@ -122,26 +122,12 @@ void update_grid() {
         }
     }
 
-    // Проверка на мутации (оставляем как было)
-    int mutated_this_tick = 0;
+    // Проверка на мутации
     for (int i = 0; i < strain_count; i++) {
         if (!strains[i].has_mutated && strains[i].infected_count >= 500) {
             mutate_from_strain(i);
             strains[i].has_mutated = 1;
-            mutated_this_tick = 1;
             break;
         }
-    }
-
-    // Глобальная мутация (если нужно)
-    int infected = 0;
-    for (int y = 0; y < GRID_HEIGHT; y++) {
-        for (int x = 0; x < GRID_WIDTH; x++) {
-            if (grid[y][x].state == INFECTED) infected++;
-        }
-    }
-
-    if (!mutated_this_tick && mutation_cooldown == 0 && infected >= 500 && strain_count < MAX_STRAINS) {
-        mutate();
     }
 }

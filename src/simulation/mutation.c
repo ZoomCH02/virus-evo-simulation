@@ -44,26 +44,6 @@ void init_strain() {
     };
 }
 
-void mutate() {
-    if (strain_count >= MAX_STRAINS) return;
-
-    mutation_cooldown = 100;
-
-    VirusStrain* prev = &strains[strain_count - 1];
-    VirusStrain* new_strain = &strains[strain_count++];
-
-    snprintf(new_strain->name, sizeof(new_strain->name), "VRS-%d", strain_count - 1);
-    new_strain->infection_rate = fminf(fmaxf(prev->infection_rate + ((rand() % 200 - 100) / 1000.0f), 0.01f), 0.9f);
-    new_strain->death_rate = fminf(fmaxf(prev->death_rate + ((rand() % 100 - 50) / 1000.0f), 0.01f), 0.5f);
-    new_strain->recovery_time = prev->recovery_time + (rand() % 41 - 20);
-    if (new_strain->recovery_time < 100) new_strain->recovery_time = 100;
-    new_strain->color = get_distinct_color(strain_count - 1);
-
-    mutation_fx_counter = 15;
-    printf("[MUTATION] New strain: %s | Infection: %.2f | Death: %.2f | Recovery: %d\n",
-           new_strain->name, new_strain->infection_rate, new_strain->death_rate, new_strain->recovery_time);
-}
-
 void mutate_from_strain(int parent_id) {
     if (strain_count >= MAX_STRAINS) return;
 
