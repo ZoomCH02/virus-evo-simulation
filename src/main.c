@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
     SDL_Renderer* stats_renderer = SDL_CreateRenderer(stats_window, -1, SDL_RENDERER_ACCELERATED);
     if (!stats_renderer) return 1;
     
-    TTF_Font* font = TTF_OpenFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14);
+    TTF_Font* font = TTF_OpenFont("fonts/DejaVuSans.ttf", 14);
     if (!font) return 1;
 
     init_simulation();
